@@ -36,3 +36,22 @@ PIMA = DatasetSpec(
     test_filename="E_PimaIndiansDiabetes_Real_Test.csv",
     target="Outcome",
 )
+
+CONTRACEPTIVE = DatasetSpec(
+    name="contraceptive",
+    train_url=(
+        "https://raw.githubusercontent.com/Vicomtech/"
+        "STDG-evaluation-metrics/main/REAL%20DATASETS/TRAIN%20DATASETS/"
+        "D_ContraceptiveMethod_Real_Train.csv"
+    ),
+    test_url=(
+        "https://raw.githubusercontent.com/Vicomtech/"
+        "STDG-evaluation-metrics/main/REAL%20DATASETS/TEST%20DATASETS/"
+        "D_ContraceptiveMethod_Real_Test.csv"
+    ),
+    train_filename="D_ContraceptiveMethod_Real_Train.csv",
+    test_filename="D_ContraceptiveMethod_Real_Test.csv",
+    target="contraceptive_method_used",
+)
+
+DATASETS = [PIMA, CONTRACEPTIVE]
