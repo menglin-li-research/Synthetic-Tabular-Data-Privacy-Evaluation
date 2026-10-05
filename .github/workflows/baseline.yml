@@ -3,6 +3,11 @@ name: baseline-ci
 on:
   push:
     branches: [main]
+    paths:
+      - "src/**"
+      - "requirements.txt"
+      - "environment.yml"
+      - ".github/workflows/baseline.yml"
   workflow_dispatch:
 
 jobs:
@@ -31,12 +36,12 @@ jobs:
 
       - name: Show generated summary
         run: |
-          cat results/tables/pima_gaussian_baseline_summary.json
+          cat results/tables/combined_gaussian_baseline_summary.json
 
       - name: Upload baseline artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pima-gaussian-baseline-results
+          name: two-dataset-gaussian-baseline-results
           path: |
             results/tables/
             data/synthetic/
