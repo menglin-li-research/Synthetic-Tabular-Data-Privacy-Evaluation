@@ -1,12 +1,14 @@
 # Synthetic Tabular Data Privacy Evaluation
 
+[![baseline-ci](https://github.com/menglin-li-research/Synthetic-Tabular-Data-Privacy-Evaluation/actions/workflows/baseline.yml/badge.svg)](https://github.com/menglin-li-research/Synthetic-Tabular-Data-Privacy-Evaluation/actions/workflows/baseline.yml)
+
 Reproduction and evaluation of synthetic tabular data methods with a focus on **resemblance, utility, privacy, and fairness**.
 
 This repository is being developed as a reproducible research exercise in privacy-enhancing technologies (PETs) and generative AI. The immediate goal is to reproduce a compact synthetic-tabular-data pipeline based on the study and codebase by Hernandez et al., then extend the analysis toward privacy/fairness questions.
 
 ## Current status
 
-**Stage 1 — reproducible baseline scaffold**
+**Stage 1 — reproducible baseline executed and validated on GitHub Actions**
 
 The first runnable baseline is designed around:
 
@@ -110,6 +112,27 @@ The script will:
 5. compare TRTR vs. TSTR predictive utility;
 6. compute privacy-screening diagnostics;
 7. write outputs under results/.
+
+## Baseline results
+
+The Stage-1 pipeline was executed successfully on GitHub Actions using Python 3.11 and the published Pima train/test split.
+
+| Dimension | Metric | Result |
+|---|---|---:|
+| Resemblance | Mean KS statistic | 0.0823 |
+| Resemblance | Mean absolute standardized mean difference | 0.0521 |
+| Resemblance | Correlation-matrix RMSE | 0.0628 |
+| Utility (TRTR) | ROC-AUC | 0.8134 |
+| Utility (TSTR) | ROC-AUC | 0.7822 |
+| Utility retention | TSTR/TRTR ROC-AUC ratio | 0.9616 |
+| Privacy screening | Median synthetic-to-train NN distance | 1.1908 |
+| Privacy screening | Median held-out-real-to-train NN distance | 1.0117 |
+| Privacy screening | Distance ratio (synthetic / held-out) | 1.1771 |
+| Privacy screening | Exact-match rate | 0.0000 |
+
+The synthetic-data model retained about **96% of the real-data ROC-AUC baseline** under the current logistic-regression utility test. Synthetic records were not unusually close to the training set under the current nearest-neighbour screening: their median distance was slightly larger than that of held-out real records, and no exact duplicate was detected. These findings are encouraging but **do not constitute a formal privacy guarantee**.
+
+Full audited results are stored under `results/audited/`.
 
 ## Interpretation
 
