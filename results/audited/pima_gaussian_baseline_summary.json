@@ -1,0 +1,44 @@
+{
+  "dataset": "pima",
+  "generator": "GaussianMultivariate (copulas)",
+  "n_real_train": 614,
+  "n_real_test": 154,
+  "n_synthetic": 614,
+  "resemblance": {
+    "mean_ks_statistic": 0.08224755700325734,
+    "mean_abs_standardized_mean_difference": 0.05213502134600785,
+    "correlation_matrix_rmse": 0.06276469821541215
+  },
+  "utility": {
+    "trtr": {
+      "accuracy": 0.6948051948051948,
+      "balanced_accuracy": 0.6979797979797979,
+      "f1": 0.624,
+      "roc_auc": 0.813406795224977
+    },
+    "tstr": {
+      "accuracy": 0.6623376623376623,
+      "balanced_accuracy": 0.6686868686868688,
+      "f1": 0.59375,
+      "roc_auc": 0.7821854912764002
+    },
+    "tstr_to_trtr_ratio": {
+      "accuracy": 0.9532710280373833,
+      "balanced_accuracy": 0.9580318379160638,
+      "f1": 0.9515224358974359,
+      "roc_auc": 0.9616166177466695
+    }
+  },
+  "privacy_screening": {
+    "synthetic_to_train_median_nn_distance": 1.1908455191564284,
+    "heldout_real_to_train_median_nn_distance": 1.0117083582558295,
+    "median_distance_ratio_syn_to_heldout": 1.1770640317822705,
+    "synthetic_exact_match_rate": 0.0
+  },
+  "note": "Privacy metrics are screening diagnostics only and do not provide a formal privacy guarantee.",
+  "execution": {
+    "platform": "GitHub Actions",
+    "python": "3.11",
+    "workflow_run": "https://github.com/menglin-li-research/Synthetic-Tabular-Data-Privacy-Evaluation/actions/runs/37310789357"
+  }
+}
