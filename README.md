@@ -4,28 +4,35 @@
 
 Reproduction and evaluation of synthetic tabular data methods with a focus on **resemblance, utility, privacy, and fairness**.
 
-This repository is being developed as a reproducible research exercise in privacy-enhancing technologies (PETs) and generative AI. The immediate goal is to reproduce a compact synthetic-tabular-data pipeline based on the study and codebase by Hernandez et al., then extend the analysis toward privacy/fairness questions.
+This repository is being developed as a reproducible research exercise in privacy-enhancing technologies (PETs) and generative AI. It is based on the evaluation framework and public code released by Hernandez et al. for synthetic tabular data in the health domain.
 
 ## Current status
 
-**Stage 1 — reproducible baseline executed and validated on GitHub Actions**
+**Stage 2 — two-dataset Gaussian baseline + upstream-style membership-inference simulation**
 
-The first runnable baseline is designed around:
+The current pipeline runs on two published datasets from the upstream repository:
 
 - **Dataset E:** Pima Indians Diabetes
-- **Synthetic generator:** Gaussian multivariate / Gaussian-copula baseline
-- **Resemblance:** distributional and correlation checks
-- **Utility:** Train-on-Real/Test-on-Real (TRTR) vs. Train-on-Synthetic/Test-on-Real (TSTR)
-- **Privacy screening:** nearest-neighbour distance and exact-duplicate diagnostics
+- **Dataset D:** Contraceptive Method Choice
 
-The privacy diagnostics in this first stage are **screening proxies, not formal privacy guarantees**. Differential privacy, membership-inference evaluation, attribute-inference evaluation, and fairness analyses are planned extensions.
+For both datasets, the repository:
+
+- generates a synthetic training set with a Gaussian multivariate model;
+- evaluates statistical resemblance;
+- compares Train-on-Real/Test-on-Real (TRTR) with Train-on-Synthetic/Test-on-Real (TSTR);
+- performs nearest-neighbour and exact-match privacy screening;
+- performs a deterministic adaptation of the upstream Hamming-distance membership-inference simulation;
+- runs automatically in GitHub Actions.
+
+The privacy analyses are **empirical diagnostics, not formal privacy guarantees**.
 
 ## Research questions
 
 1. How closely does synthetic tabular data resemble the source data?
-2. How much predictive utility is retained when a model is trained on synthetic rather than real data?
-3. Does the synthetic sample show signs of excessive proximity to, or duplication of, training records?
-4. How should privacy, utility, and fairness be evaluated jointly rather than as isolated objectives?
+2. How much downstream predictive utility is retained?
+3. Do synthetic records show signs of excessive proximity to real training records?
+4. Can an attacker distinguish training members from held-out non-members under an upstream-style membership-inference simulation?
+5. How should privacy, utility, resemblance, and fairness be considered jointly?
 
 ## Source study
 
@@ -34,10 +41,10 @@ This project is informed by:
 > Hernandez, M., Epelde, G., Alberdi, A., Cilla, R., & Rankin, D.  
 > *Synthetic Tabular Data Evaluation in the Health Domain Covering Resemblance, Utility, and Privacy Dimensions.*
 
-Official codebase:  
+Official upstream repository:  
 https://github.com/Vicomtech/STDG-evaluation-metrics
 
-The upstream repository evaluates synthetic tabular data across **resemblance, utility, and privacy** and provides six health-related datasets plus multiple generators, including Gaussian Multivariate, SDV, CTGAN, and WGAN-GP.
+The source repository evaluates synthetic tabular data across **resemblance, utility, and privacy**, using six open-source datasets and four generation approaches: Gaussian Multivariate, SDV, CTGAN, and WGAN-GP.
 
 ## Repository structure
 
@@ -50,21 +57,25 @@ The upstream repository evaluates synthetic tabular data across **resemblance, u
 │   └── README.md
 ├── docs/
 │   ├── methods.md
-│   └── research_notes.md
+│   ├── research_notes.md
+│   └── ci.md
 ├── notebooks/
 │   └── README.md
 ├── results/
-│   └── README.md
+│   ├── README.md
+│   ├── BASELINE_RESULTS.md
+│   └── TWO_DATASET_RESULTS.md
 └── src/
     ├── __init__.py
     ├── config.py
     ├── download_data.py
     ├── generate.py
     ├── evaluate.py
+    ├── privacy_attacks.py
     └── run_baseline.py
 ~~~
 
-Generated datasets and result tables are intentionally excluded from version control and can be recreated from the scripts.
+Downloaded data and generated synthetic records are excluded from version control and can be regenerated.
 
 ## Quick start
 
@@ -89,81 +100,80 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ~~~
 
-### 2. Download the exact published train/test split
+### 2. Download the published train/test splits
 
 ~~~bash
 python -m src.download_data
 ~~~
 
-This downloads the Pima Indians Diabetes train/test files from the official Vicomtech reproduction repository.
-
-### 3. Run the baseline
+### 3. Run the full two-dataset baseline
 
 ~~~bash
 python -m src.run_baseline
 ~~~
 
-The script will:
+The pipeline automatically generates synthetic data and writes the detailed result summaries under `results/tables/`.
 
-1. load the real training and test data;
-2. fit a Gaussian multivariate synthetic-data model;
-3. generate a synthetic training set of the same size;
-4. evaluate resemblance;
-5. compare TRTR vs. TSTR predictive utility;
-6. compute privacy-screening diagnostics;
-7. write outputs under results/.
+## Validated results
 
-## Baseline results
+The latest two-dataset run completed successfully in GitHub Actions.
 
-The Stage-1 pipeline was executed successfully on GitHub Actions using Python 3.11 and the published Pima train/test split.
+| Dataset | TRTR ROC-AUC | TSTR ROC-AUC | ROC-AUC retention | Exact-match rate |
+|---|---:|---:|---:|---:|
+| Pima Indians Diabetes | 0.8134 | 0.7822 | 96.16% | 0.00% |
+| Contraceptive Method Choice | 0.7330 | 0.7058 | 96.28% | 2.55% |
 
-| Dimension | Metric | Result |
-|---|---|---:|
-| Resemblance | Mean KS statistic | 0.0823 |
-| Resemblance | Mean absolute standardized mean difference | 0.0521 |
-| Resemblance | Correlation-matrix RMSE | 0.0628 |
-| Utility (TRTR) | ROC-AUC | 0.8134 |
-| Utility (TSTR) | ROC-AUC | 0.7822 |
-| Utility retention | TSTR/TRTR ROC-AUC ratio | 0.9616 |
-| Privacy screening | Median synthetic-to-train NN distance | 1.1908 |
-| Privacy screening | Median held-out-real-to-train NN distance | 1.0117 |
-| Privacy screening | Distance ratio (synthetic / held-out) | 1.1771 |
-| Privacy screening | Exact-match rate | 0.0000 |
+### Resemblance
 
-The synthetic-data model retained about **96% of the real-data ROC-AUC baseline** under the current logistic-regression utility test. Synthetic records were not unusually close to the training set under the current nearest-neighbour screening: their median distance was slightly larger than that of held-out real records, and no exact duplicate was detected. These findings are encouraging but **do not constitute a formal privacy guarantee**.
+| Dataset | Mean KS | Mean absolute SMD | Correlation RMSE |
+|---|---:|---:|---:|
+| Pima | 0.0823 | 0.0521 | 0.0628 |
+| Contraceptive | 0.0126 | 0.0180 | 0.0585 |
 
-Full audited results are stored under `results/audited/`.
+Both datasets retain substantial predictive utility under this baseline, with TSTR ROC-AUC close to the corresponding TRTR reference.
+
+The **2.55% exact-match rate on the Contraceptive dataset is a caution signal**, not automatically evidence of disclosure. This dataset is highly discrete and contains repeated combinations, so exact matches can occur more readily than in a continuous-valued dataset. It nevertheless motivates stronger disclosure-risk testing.
+
+### Upstream-style membership-inference simulation
+
+The source repository evaluates membership inference by quantile-coding records and using Hamming-distance thresholds. This repository implements a deterministic adaptation of that procedure with thresholds 0.4, 0.3, 0.2, and 0.1.
+
+For Pima, mean attack accuracy across attacker-data proportions ranges from approximately **0.47 to 0.51**. For the Contraceptive dataset it ranges from approximately **0.51 to 0.62**, with the strictest threshold producing the strongest apparent separation.
+
+These values should **not** be interpreted as a proof of privacy or as a direct comparison with differential privacy. They are attack-specific empirical diagnostics.
+
+Detailed results are documented in:
+
+- `results/TWO_DATASET_RESULTS.md`
+- `results/audited/`
 
 ## Interpretation
 
-The first baseline is intentionally conservative. It is meant to establish a transparent, auditable pipeline before adding more complex generators or stronger privacy tests.
+The current results support three preliminary observations:
 
-A successful run should be interpreted across three dimensions:
+- a simple Gaussian multivariate generator can retain a large proportion of downstream utility on both datasets;
+- high aggregate resemblance does not automatically imply low disclosure risk;
+- privacy conclusions are sensitive to the threat model and evaluation method.
 
-- **Resemblance:** lower distributional discrepancy is better.
-- **Utility:** TSTR performance closer to TRTR indicates better downstream utility.
-- **Privacy screening:** synthetic records should not collapse onto specific real training records.
+The project therefore treats **resemblance, utility, and privacy as distinct dimensions** rather than assuming that good performance on one implies good performance on the others.
 
-No single metric is sufficient. High resemblance can coexist with poor utility, and high fidelity can also increase disclosure risk.
+## Next extensions
 
-## Planned extensions
-
-- reproduce a second dataset from the source study;
-- add SDV/CTGAN generation;
-- port the source repository's membership-inference and attribute-inference analyses;
-- add differential-privacy experiments;
-- add fairness metrics and subgroup analyses;
-- compare privacy–utility–fairness trade-offs across generators;
-- add notebooks and presentation-ready figures once the first run is validated.
+- add a second generator such as SDV or CTGAN;
+- reproduce the upstream similarity and attribute-inference analyses;
+- strengthen membership-inference evaluation;
+- add differential-privacy mechanisms and explicit privacy budgets;
+- add fairness and subgroup-utility metrics;
+- produce presentation-ready figures and notebooks.
 
 ## Reproducibility principles
 
 - fixed random seeds where supported;
 - explicit data provenance;
-- no private/raw sensitive data committed to GitHub;
+- no private sensitive data committed to GitHub;
 - generated outputs separated from source code;
 - clear distinction between replication, adaptation, and extension;
-- conservative interpretation of privacy metrics.
+- conservative interpretation of privacy evidence.
 
 ## Author
 
@@ -172,4 +182,4 @@ City University of Macau
 
 ## Acknowledgement
 
-This repository is an independent reproduction/learning project. It does not claim authorship of the original evaluation framework or datasets. Please cite the original study and upstream repository when reusing their materials or ideas.
+This repository is an independent reproduction and learning project. It does not claim authorship of the original evaluation framework or datasets. Please cite the original study and upstream repository when reusing their materials or ideas.
