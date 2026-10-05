@@ -110,13 +110,26 @@ def _fit_and_score(
     model.fit(x_train, y_train)
 
     pred = model.predict(x_test)
-    prob = model.predict_proba(x_test)[:, 1]
+    prob = model.predict_proba(x_test)
+    classes = np.unique(y_test)
+
+    if len(classes) == 2:
+        f1 = f1_score(y_test, pred)
+        roc_auc = roc_auc_score(y_test, prob[:, 1])
+    else:
+        f1 = f1_score(y_test, pred, average="macro")
+        roc_auc = roc_auc_score(
+            y_test,
+            prob,
+            multi_class="ovr",
+            average="macro",
+        )
 
     return UtilityResult(
         accuracy=float(accuracy_score(y_test, pred)),
         balanced_accuracy=float(balanced_accuracy_score(y_test, pred)),
-        f1=float(f1_score(y_test, pred)),
-        roc_auc=float(roc_auc_score(y_test, prob)),
+        f1=float(f1),
+        roc_auc=float(roc_auc),
     )
 
 
@@ -150,13 +163,6 @@ def privacy_screening_metrics(
     synthetic: pd.DataFrame,
     target: str,
 ) -> dict[str, float]:
-    """Heuristic privacy screening; not a formal privacy guarantee.
-
-    We compare nearest-neighbour distances from synthetic rows to the real
-    training set against the corresponding distances from held-out real rows.
-    Synthetic samples that are systematically much closer to training records
-    than held-out real samples deserve further disclosure-risk investigation.
-    """
     feature_cols = [c for c in real_train.columns if c != target]
 
     scaler = StandardScaler()
