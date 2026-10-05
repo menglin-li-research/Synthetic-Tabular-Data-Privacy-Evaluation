@@ -218,3 +218,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+# Project data and generated outputs
+data/raw/
+data/synthetic/
+results/tables/*.csv
+results/tables/*.json
+results/figures/*
+!results/README.md
