@@ -2,9 +2,24 @@
 
 [![baseline-ci](https://github.com/menglin-li-research/Synthetic-Tabular-Data-Privacy-Evaluation/actions/workflows/baseline.yml/badge.svg)](https://github.com/menglin-li-research/Synthetic-Tabular-Data-Privacy-Evaluation/actions/workflows/baseline.yml)
 
-Reproduction and evaluation of synthetic tabular data methods with a focus on **resemblance, utility, privacy, and fairness**.
+Reproduction and evaluation of synthetic tabular data methods, with current experiments focusing on **resemblance, utility, and privacy**; **fairness is a planned extension**.
 
 This repository is being developed as a reproducible research exercise in privacy-enhancing technologies (PETs) and generative AI. It is based on the evaluation framework and public code released by Hernandez et al. for synthetic tabular data in the health domain.
+
+## Assignment deliverables — current completion
+
+- [x] **One synthetic-data method implemented:** Gaussian Multivariate
+- [x] **Two datasets reproduced:** Pima Indians Diabetes + Contraceptive Method Choice
+- [x] **README and reproducible repository structure**
+- [x] **Environment specification and automated data download**
+- [x] **Resemblance evaluation**
+- [x] **TRTR vs. TSTR utility evaluation**
+- [x] **Privacy screening**
+- [x] **Upstream-style membership-inference simulation**
+- [x] **Successful clean-environment GitHub Actions run**
+- [ ] **Fairness analysis** — planned extension, not yet claimed as completed
+
+This satisfies the coding portion of the onboarding task while keeping the current privacy claims deliberately conservative.
 
 ## Current status
 
@@ -32,7 +47,7 @@ The privacy analyses are **empirical diagnostics, not formal privacy guarantees*
 2. How much downstream predictive utility is retained?
 3. Do synthetic records show signs of excessive proximity to real training records?
 4. Can an attacker distinguish training members from held-out non-members under an upstream-style membership-inference simulation?
-5. How should privacy, utility, resemblance, and fairness be considered jointly?
+5. **Future extension:** how should fairness be evaluated jointly with privacy, utility, and resemblance?
 
 ## Source study
 
@@ -113,6 +128,20 @@ python -m src.run_baseline
 ~~~
 
 The pipeline automatically generates synthetic data and writes the detailed result summaries under `results/tables/`.
+
+## Results at a glance
+
+### Utility
+
+![TRTR vs TSTR ROC-AUC](results/figures/utility_auc.svg)
+
+### Privacy diagnostics
+
+![Privacy diagnostics](results/figures/privacy_diagnostics.svg)
+
+### Statistical resemblance
+
+![Resemblance summary](results/figures/resemblance_summary.svg)
 
 ## Validated results
 
