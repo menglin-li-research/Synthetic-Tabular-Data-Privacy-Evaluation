@@ -8,6 +8,14 @@ Workflow run:
 
 https://github.com/menglin-li-research/Synthetic-Tabular-Data-Privacy-Evaluation/actions/runs/37311344200
 
+## Visual summary
+
+![TRTR vs TSTR ROC-AUC](figures/utility_auc.svg)
+
+![Privacy diagnostics](figures/privacy_diagnostics.svg)
+
+![Resemblance summary](figures/resemblance_summary.svg)
+
 ## Pima Indians Diabetes
 
 ### Resemblance
