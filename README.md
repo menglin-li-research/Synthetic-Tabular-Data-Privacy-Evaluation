@@ -21,6 +21,8 @@ This repository is being developed as a reproducible research exercise in privac
 
 This satisfies the coding portion of the onboarding task while keeping the current privacy claims deliberately conservative.
 
+**One-minute task summary:** [`docs/ONBOARDING_TASK_SUMMARY.md`](docs/ONBOARDING_TASK_SUMMARY.md)
+
 ## Current status
 
 **Stage 2 — two-dataset Gaussian baseline + upstream-style membership-inference simulation**
