@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Map Explorers: 我的理想校园寻宝记</title>
+    <style>
+        /* ==================== 教师可编辑配置区（CSS变量） ==================== */
+        :root {
+            --primary-color: #4A90E2;
+            --secondary-color: #F5A623;
+            --success-color: #7ED321;
+            --error-color: #D0021B;
+            --bg-color: #F0F4F8;
+            --grid-bg: #FFFFFF;
+            --text-color: #333333;
+            --border-radius: 12px;
+            --grid-size: 5; /* 网格大小，可修改为 5, 6, 7 */
+            --cell-size: 60px; /* 单元格大小，移动端会自适应 */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Comic Sans MS', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 10px;
+            overflow: hidden;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 500px;
+            background: #fff;
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            position: relative;
+        }
+
+        /* ==================== 顶部信息栏 ==================== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 10px;
+            background: var(--primary-color);
+            color: #fff;
+            border-radius: var(--border-radius);
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .header span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* ==================== 地图区域 ==================== */
+        #map-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: auto;
+            padding: 5px;
+        }
+
+        #map-grid {
+            display: grid;
+            grid-template-columns: repeat(var(--grid-size), 1fr);
+            gap: 2px;
+            background: #ddd;
+            border: 3px solid #ccc;
+            border-radius: 8px;
+            padding: 2px;
+            width: 100%;
+            max-width: calc(var(--grid-size) * var(--cell-size));
+        }
+
+        .cell {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: calc(var(--cell-size) * 0.6);
+            background: var(--grid-bg);
+            border-radius: 4px;
+            transition: background 0.2s, transform 0.1s;
+            cursor: pointer;
+            position: relative;
+        }
+        .cell:active {
+            transform: scale(0.95);
+        }
+        .cell.wall {
+            background: #BDC3C7;
+            cursor: not-allowed;
+        }
+        .cell.path {
+            background: #E8F8F5;
+        }
+        .cell.stairs {
+            background: #FFF3CD;
+        }
+        .cell.goal {
+            background: #D4EDDA;
+            border: 2px dashed var(--success-color);
+        }
+        .cell.start {
+            background: #D1ECF1;
+        }
+
+        /* 角色 */
+        .player {
+            position: absolute;
+            font-size: calc(var(--cell-size) * 0.7);
+            z-index: 10;
+            transition: all 0.3s ease;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+
+        /* ==================== 提示与反馈栏 ==================== */
+        #status-bar {
+            background: #FFF9E6;
+            border-left: 5px solid var(--secondary-color);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+        #status-bar.error {
+            background: #FFEBEE;
+            border-left-color: var(--error-color);
+            color: var(--error-color);
+        }
+        #status-bar.success {
+            background: #E8F5E9;
+            border-left-color: var(--success-color);
+            color: #2E7D32;
+        }
+
+        /* ==================== 方向按钮 ==================== */
+        #controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            padding: 5px;
+        }
+
+        .btn {
+            padding: 12px 6px;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.1s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            color: #fff;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+        }
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        .btn-up { background: #4A90E2; grid-column: 2; }
+        .btn-left { background: #F5A623; grid-column: 1; grid-row: 2; }
+        .btn-right { background: #F5A623; grid-column: 3; grid-row: 2; }
+        .btn-stairs-up { background: #7ED321; grid-column: 2; grid-row: 3; }
+        .btn-stairs-down { background: #D0021B; grid-column: 1 / span 2; grid-row: 3; }
+        .btn-turn-over { background: #9013FE; grid-column: 3; grid-row: 3; }
+
+        .btn-icon { font-size: 20px; }
+        .btn-text { font-size: 10px; }
+
+        /* ==================== 弹窗与页面 ==================== */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.95);
+            border-radius: var(--border-radius);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+            z-index: 100;
+            gap: 15px;
+        }
+        .overlay.hidden { display: none; }
+
+        .overlay h1 { font-size: 24px; color: var(--primary-color); }
+        .overlay h2 { font-size: 20px; color: var(--secondary-color); }
+        .overlay p { font-size: 14px; line-height: 1.5; }
+        .overlay ul { text-align: left; font-size: 13px; line-height: 1.8; padding-left: 20px; }
+
+        .start-btn {
+            background: var(--secondary-color);
+            color: #fff;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #C17B1A;
+            transition: all 0.1s;
+        }
+        .start-btn:active {
+            transform: translateY(6px);
+            box-shadow: none;
+        }
+
+        /* ==================== 建造器面板 ==================== */
+        #builder-panel {
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            background: #F8F9FA;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        #builder-panel.active { display: flex; }
+        .builder-tools {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: center;
+        }
+        .tool-btn {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            background: #fff;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .tool-btn.selected {
+            border-color: var(--primary-color);
+            background: #E3F2FD;
+            box-shadow: 0 0 0 2px var(--primary-color);
+        }
+
+        /* ==================== 结算页面 ==================== */
+        .score-display {
+            font-size: 48px;
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+        .star-rating {
+            font-size: 30px;
+            letter-spacing: 5px;
+        }
+
+        /* ==================== 响应式 ==================== */
+        @media (max-width: 400px) {
+            :root {
+                --cell-size: 50px;
+            }
+            .btn { padding: 10px 4px; font-size: 12px; }
+            .btn-icon { font-size: 16px; }
+            .header { font-size: 12px; padding: 4px 8px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- 顶部信息 -->
+    <div class="header">
+        <span>🏆 得分: <span id="score-display">0</span></span>
+        <span>📍 关卡: <span id="level-display">1/8</span></span>
+        <span>⏱️ 时间: <span id="timer-display">120</span>s</span>
+    </div>
+
+    <!-- 地图区域 -->
+    <div id="map-wrapper">
+        <div id="map-grid"></div>
+    </div>
+
+    <!-- 状态提示栏 -->
+    <div id="status-bar">
+        <span>💡</span>
+        <span id="status-text">准备好了吗？点击开始按钮出发吧！</span>
+    </div>
+
+    <!-- 方向控制按钮 -->
+    <div id="controls">
+        <button class="btn btn-up" onclick="handleMove('straight')">
+            <span class="btn-icon">⬆️</span>
+            <span class="btn-text">直走 (Go straight)</span>
+        </button>
+        <button class="btn btn-left" onclick="handleMove('left')">
+            <span class="btn-icon">⬅️</span>
+            <span class="btn-text">左转 (Turn left)</span>
+        </button>
+        <button class="btn btn-right" onclick="handleMove('right')">
+            <span class="btn-icon">➡️</span>
+            <span class="btn-text">右转 (Turn right)</span>
+        </button>
+        <button class="btn btn-stairs-up" onclick="handleMove('upstairs')">
+            <span class="btn-icon">🪜</span>
+            <span class="btn-text">上楼 (Upstairs)</span>
+        </button>
+        <button class="btn btn-stairs-down" onclick="handleMove('downstairs')">
+            <span class="btn-icon">⬇️</span>
+            <span class="btn-text">下楼 (Downstairs)</span>
+        </button>
+        <button class="btn btn-turn-over" onclick="handleMove('turn_over')">
+            <span class="btn-icon">🔄</span>
+            <span class="btn-text">掉头 (Turn over)</span>
+        </button>
+    </div>
+
+    <!-- 建造器面板（初始隐藏） -->
+    <div id="builder-panel">
+        <div style="font-weight:bold; text-align:center;">🎨 自定义地图建造器</div>
+        <div class="builder-tools" id="tool-selector">
+            <button class="tool-btn selected" data-tool="wall">🧱 墙壁</button>
+            <button class="tool-btn" data-tool="path">🟩 草地</button>
+            <button class="tool-btn" data-tool="tree">🌳 树</button>
+            <button class="tool-btn" data-tool="school">🏫 学校</button>
+            <button class="tool-btn" data-tool="park">🏞️ 公园</button>
+            <button class="tool-btn" data-tool="stairs">🪜 楼梯</button>
+        </div>
+        <div style="display:flex; gap:5px; justify-content:center;">
+            <button class="start-btn" style="font-size:14px; padding:8px 16px;" onclick="setStartPoint()">📍 设起点</button>
+            <button class="start-btn" style="font-size:14px; padding:8px 16px; background:#4A90E2; box-shadow:0 6px 0 #2A6CB6;" onclick="setGoalPoint()">🎯 设终点</button>
+            <button class="start-btn" style="font-size:14px; padding:8px 16px; background:#7ED321; box-shadow:0 6px 0 #5BA31A;" onclick="startCustomGame()">▶️ 开始寻宝</button>
+        </div>
+    </div>
+
+    <!-- 覆盖层：开始页面 -->
+    <div class="overlay" id="start-screen">
+        <h1>🗺️ Map Explorers</h1>
+        <h2>我的理想校园寻宝记</h2>
+        <p>根据路线提示，控制角色找到终点！</p>
+        <ul>
+            <li>⬆️ 直走 (Go straight)</li>
+            <li>⬅️ 左转 (Turn left) / ➡️ 右转 (Turn right)</li>
+            <li>🪜 上楼 (Upstairs) / ⬇️ 下楼 (Downstairs)</li>
+            <li>🔄 掉头 (Turn over)</li>
+        </ul>
+        <button class="start-btn" onclick="startGame()">🚀 开始游戏</button>
+        <button class="start-btn" style="background:#4A90E2; box-shadow:0 6px 0 #2A6CB6; font-size:14px; padding:10px 20px;" onclick="showRules()">📖 游戏规则</button>
+        <button class="start-btn" style="background:#7ED321; box-shadow:0 6px 0 #5BA31A; font-size:14px; padding:10px 20px;" onclick="enterBuilderMode()">🎨 设计我的地图</button>
+    </div>
+
+    <!-- 覆盖层：规则页面 -->
+    <div class="overlay hidden" id="rules-screen">
+        <h2>📖 游戏规则</h2>
+        <ul>
+            <li>1. 每个关卡有起点 🚪 和终点 🎯。</li>
+            <li>2. 点击下方方向按钮控制角色移动。</li>
+            <li>3. 撞到障碍物或边界外，扣 1 分并提示。</li>
+            <li>4. 走到终点即通关，用时越短、步数越少，得分越高。</li>
+            <li>5. 时间限制 120 秒，时间耗尽游戏结束。</li>
+            <li>6. 完成 8 个关卡后，可以进入“建造模式”设计自己的地图！</li>
+        </ul>
+        <button class="start-btn" onclick="hideRules()">👌 我知道了</button>
+    </div>
+
+    <!-- 覆盖层：通关页面 -->
+    <div class="overlay hidden" id="level-complete-screen">
+        <h1>🎉 关卡完成！</h1>
+        <p id="level-complete-msg">Great job! 你找到了终点！</p>
+        <div class="score-display" id="level-score">+100</div>
+        <p style="font-size:12px; color:#666;">用时: <span id="level-time">0</span>s | 步数: <span id="level-steps">0</span></p>
+        <button class="start-btn" onclick="nextLevel()">➡️ 下一关</button>
+    </div>
+
+    <!-- 覆盖层：游戏结束 -->
+    <div class="overlay hidden" id="game-over-screen">
+        <h1>⏰ 时间到！</h1>
+        <p>你的最终得分是：</p>
+        <div class="score-display" id="final-score">0</div>
+        <div class="star-rating" id="star-rating">⭐⭐⭐</div>
+        <p id="game-over-msg">继续加油！空间感会越来越好的！</p>
+        <button class="start-btn" onclick="resetGame()">🔄 重新开始</button>
+        <button class="start-btn" style="background:#7ED321; box-shadow:0 6px 0 #5BA31A; font-size:14px; padding:10px 20px;" onclick="enterBuilderMode()">🎨 设计我的地图</button>
+    </div>
+</div>
+
+<script>
+/* ============================================================================================
+   ============================== 教师可编辑配置区（JavaScript） ==============================
+   ============================================================================================
+   说明：
+   1. levels 数组包含 8 个关卡的地图数据。
+   2. 地图使用 5x5 网格（可通过 CSS 变量 --grid-size 修改）。
+   3. 每个单元格用 emoji 表示：
+      🟩 = 草地（可通行）  🧱 = 墙壁（不可通行）  🌳 = 树（不可通行）
+      🏫 = 学校（不可通行） 🏞️ = 公园（不可通行） 🪜 = 楼梯（可通行）
+      🚪 = 起点             🎯 = 终点
+   4. 如果修改地图，请确保起点和终点在可通行区域。
+   5. 可以添加更多关卡，只需在 levels 数组中增加对象即可。
+============================================================================================ */
+
+const CONFIG = {
+    timeLimit: 120,           // 每局总时间（秒）
+    pointsPerMove: 10,        // 每正确移动一次加多少分
+    pointsPerLevel: 100,      // 每通关一个关卡额外加分
+    maxLevels: 8,             // 默认关卡数量
+    gridSize: 5               // 网格大小（5x5）
+};
+
+const levels = [
+    // 第 1 关：简单直线
+    {
+        map: [
+            ['🧱', '🧱', '🧱', '🧱', '🧱'],
+            ['🧱', '🟩', '🟩', '🟩', '🚪'],
+            ['🧱', '🧱', '🧱', '🧱', '🟩'],
+            ['🧱', '🧱', '🧱', '🧱', '🎯'],
+            ['🧱', '🧱', '🧱', '🧱', '🧱']
+        ],
+        start: { x: 4, y: 1, dir: 'S' },
+        goal: { x: 4, y: 3 },
+        hint: "From the gate, go straight 2 steps.",
+        hintZh: "从大门出发，直走 2 步。"
+    },
+    // 第 2 关：简单转弯
+    {
+        map: [
+            ['🧱', '🧱', '🧱', '🧱', '🧱'],
+            ['🚪', '🟩', '🟩', '🟩', '🧱'],
+            ['🧱', '🧱', '🧱', '🟩', '🧱'],
+            ['🧱', '🧱', '🧱', '🟩', '🧱'],
+            ['🧱', '🧱', '🧱', '🎯', '🧱']
+        ],
+        start: { x: 0, y: 1, dir: 'E' },
+        goal: { x: 3, y: 4 },
+        hint: "Go straight 3 steps, turn right, and go straight 3 steps.",
+        hintZh: "直走 3 步，右转，再直走 3 步。"
+    },
+    // 第 3 关：上楼
+    {
+        map: [
+            ['🧱', '🧱', '🧱', '🧱', '🧱'],
+            ['🚪', '🟩', '🪜', '🟩', '🎯'],
+            ['🧱', '🧱', '🧱', '🧱', '🧱'],
+            ['🧱', '🧱', '🧱', '🧱', '🧱'],
+            ['🧱', '🧱', '🧱', '🧱', '🧱']
+        ],
+        start: { x: 0, y: 1, dir: 'E' },
+        goal: { x: 4, y: 1 },
+        hint: "Go straight 2 steps, go upstairs, then go straight 2 steps.",
+        hintZh: "直走 2 步，上楼，再直走 2 步。"
+    },
+    // 第 4 关：掉头
+    {
+        map: [
+            ['🧱', '🧱', '🧱', '🧱', '🧱'],
+            ['🧱', '🎯', '🟩', '🚪', '🧱'],
+            ['🧱', '🧱', '🧱', '🧱', '🧱'],
+            ['🧱', '🧱', '🧱', '🧱', '🧱'],
+            ['🧱', '🧱', '🧱', '🧱', '🧱']
+        ],
+        start: { x: 3, y: 1, dir: 'E' },
+        goal: { x: 1, y: 1 },
+        hint: "Turn around, then go straight 2 steps.",
+        hintZh: "掉头，然后直走 2 步。"
+    },
+    // 第 5 关：障碍物
+    {
+        map: [
+            ['🚪', '🟩', '🧱', '🧱', '🧱'],
+            ['🧱', '🟩', '🧱', '🌳', '🧱'],
+            ['🧱', '🟩', '🟩', '🟩', '🧱'],
+            ['🧱', '🧱', '🧱', '🟩', '🧱'],
+            ['🧱', '🧱', '🧱', '🎯', '🧱']
+        ],
+        start: { x: 0, y: 0, dir: 'E' },
+        goal: { x: 3, y: 4 },
+        hint: "Go straight 1 step, turn right, go straight 2 steps, turn left, go straight 2 steps, turn right, and go straight 2 steps.",
+        hintZh: "直走 1 步，右转，直走 2 步，左转，直走 2 步，右转，直走 2 步。"
+    },
+    // 第 6 关：下楼
+    {
+        map: [
+            ['🧱', '🧱', '🧱', '🧱', '🧱'],
+            ['🧱', '🎯', '🟩', '🪜', '🧱'],
+            ['🧱', '🟩', '🟩', '🟩', '🧱'],
+            ['🧱', '🚪', '🧱', '🧱', '🧱'],
+            ['🧱', '🧱', '🧱', '🧱', '🧱']
+        ],
+        start: { x: 1, y: 3, dir: 'N' },
+        goal: { x: 1, y: 1 },
+        hint: "Go straight 1 step, turn right, go straight 2 steps, turn left, go straight 1 step, go downstairs, turn left, go straight 2 steps.",
+        hintZh: "直走 1 步，右转，直走 2 步，左转，直走 1 步，下楼，左转，直走 2 步。"
+    },
+    // 第 7 关：综合
+    {
+        map: [
+            ['🚪', '🟩', '🟩', '🧱', '🧱'],
+            ['🧱', '🌳', '🟩', '🧱', '🧱'],
+            ['🧱', '🧱', '🪜', '🟩', '🎯'],
+            ['🧱', '🧱', '🧱', '🟩', '🧱'],
+            ['🧱', '🧱', '🧱', '🧱', '🧱']
+        ],
+        start: { x: 0, y: 0, dir: 'E' },
+        goal: { x: 4, y: 2 },
+        hint: "Go straight 2 steps, turn right, go straight 2 steps, go upstairs, turn left, and go straight 2 steps.",
+        hintZh: "直走 2 步，右转，直走 2 步，上楼，左转，再直走 2 步。"
+    },
+    // 第 8 关：终极挑战
+    {
+        map: [
+            ['🧱', '🚪', '🟩', '🧱', '🧱'],
+            ['🧱', '🧱', '🟩', '🧱', '🧱'],
+            ['🧱', '🌳', '🟩', '🌳', '🧱'],
+            ['🧱', '🧱', '🪜', '🟩', '🎯'],
+            ['🧱', '🧱', '🧱', '🧱', '🧱']
+        ],
+        start: { x: 1, y: 0, dir: 'S' },
+        goal: { x: 4, y: 3 },
+        hint: "Turn left, go straight 1 step, turn right, go straight 3 steps, go downstairs, turn left, and go straight 2 steps.",
+        hintZh: "左转，直走 1 步，右转，直走 3 步，下楼，左转，再直走 2 步。"
+    }
+];
+
+/* ============================================================================================
+   ====================================== 游戏状态与逻辑 ======================================
+   ============================================================================================ */
+
+let gameState = {
+    currentLevel: 0,
+    score: 0,
+    timeLeft: CONFIG.timeLimit,
+    timer: null,
+    player: { x: 0, y: 0, dir: 'N' },
+    goal: { x: 0, y: 0 },
+    map: [],
+    isPlaying: false,
+    steps: 0,
+    levelStartTime: 0,
+    isBuilderMode: false,
+    builderTool: 'wall',
+    builderStart: null,
+    builderGoal: null,
+    pendingPointPlacement: null
+};
+
+const DIRS = {
+    'N': { dx: 0, dy: -1, left: 'W', right: 'E', opposite: 'S' },
+    'E': { dx: 1, dy: 0, left: 'N', right: 'S', opposite: 'W' },
+    'S': { dx: 0, dy: 1, left: 'E', right: 'W', opposite: 'N' },
+    'W': { dx: -1, dy: 0, left: 'S', right: 'N', opposite: 'E' }
+};
+
+const DIR_EMOJI = { 'N': '⬆️', 'E': '➡️', 'S': '⬇️', 'W': '⬅️' };
+
+// 初始化游戏
+function initGame() {
+    // Preload the first level so the board renders correctly before Start is clicked.
+    gameState.map = levels[0].map.map(row => [...row]);
+    gameState.player = { ...levels[0].start };
+    gameState.goal = { ...levels[0].goal };
+    renderMap();
+    updateUI();
+}
+
+// 开始游戏
+function startGame() {
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('game-over-screen').classList.add('hidden');
+    document.getElementById('level-complete-screen').classList.add('hidden');
+    resetGameState();
+    loadLevel(0);
+    startTimer();
+    gameState.isPlaying = true;
+}
+
+// 重置游戏状态
+function resetGameState() {
+    gameState.score = 0;
+    gameState.timeLeft = CONFIG.timeLimit;
+    gameState.currentLevel = 0;
+    gameState.isPlaying = false;
+    gameState.isBuilderMode = false;
+    if (gameState.timer) clearInterval(gameState.timer);
+}
+
+// 重置整个游戏
+function resetGame() {
+    document.getElementById('game-over-screen').classList.add('hidden');
+    document.getElementById('level-complete-screen').classList.add('hidden');
+    document.getElementById('start-screen').classList.remove('hidden');
+    document.getElementById('builder-panel').classList.remove('active');
+    resetGameState();
+    updateUI();
+    renderMap();
+}
+
+// 加载关卡
+function loadLevel(index) {
+    if (index >= levels.length) {
+        // 所有关卡完成
+        gameOver(true);
+        return;
+    }
+    gameState.currentLevel = index;
+    const level = levels[index];
+    gameState.map = JSON.parse(JSON.stringify(level.map)); // 深拷贝
+    gameState.player = { ...level.start };
+    gameState.goal = { ...level.goal };
+    gameState.steps = 0;
+    gameState.levelStartTime = Date.now();
+
+    // 更新提示
+    document.getElementById('status-text').innerHTML = `📍 ${level.hintZh}<br><small style="color:#666;">${level.hint}</small>`;
+    document.getElementById('status-bar').className = '';
+
+    renderMap();
+    updateUI();
+}
+
+// 渲染地图
+function renderMap() {
+    const grid = document.getElementById('map-grid');
+    grid.style.gridTemplateColumns = `repeat(${CONFIG.gridSize}, 1fr)`;
+    grid.innerHTML = '';
+
+    for (let y = 0; y < CONFIG.gridSize; y++) {
+        for (let x = 0; x < CONFIG.gridSize; x++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            const tile = gameState.map[y][x];
+
+            // 设置背景和内容
+            if (tile === '🧱') {
+                cell.classList.add('wall');
+                cell.textContent = '🧱';
+            } else if (tile === '🟩') {
+                cell.classList.add('path');
+                cell.textContent = '🟩';
+            } else if (tile === '🌳') {
+                cell.classList.add('wall');
+                cell.textContent = '🌳';
+            } else if (tile === '🏫') {
+                cell.classList.add('wall');
+                cell.textContent = '🏫';
+            } else if (tile === '🏞️') {
+                cell.classList.add('wall');
+                cell.textContent = '🏞️';
+            } else if (tile === '🪜') {
+                cell.classList.add('stairs');
+                cell.textContent = '🪜';
+            } else if (tile === '🚪') {
+                cell.classList.add('start');
+                cell.textContent = '🚪';
+            } else if (tile === '🎯') {
+                cell.classList.add('goal');
+                cell.textContent = '🎯';
+            } else {
+                cell.textContent = tile;
+            }
+
+            // 玩家
+            if (!gameState.isBuilderMode && gameState.player.x === x && gameState.player.y === y) {
+                const playerDiv = document.createElement('div');
+                playerDiv.className = 'player';
+                playerDiv.textContent = '🧑';
+                playerDiv.style.transform = `rotate(${getRotation(gameState.player.dir)}deg)`;
+                cell.appendChild(playerDiv);
+            }
+
+            // 点击事件（建造模式）
+            cell.onclick = () => handleCellClick(x, y);
+            grid.appendChild(cell);
+        }
+    }
+}
+
+// 根据方向获取旋转角度
+function getRotation(dir) {
+    switch(dir) {
+        case 'N': return 0;
+        case 'E': return 90;
+        case 'S': return 180;
+        case 'W': return 270;
+    }
+}
+
+// 更新UI（得分、关卡、时间）
+function updateUI() {
+    document.getElementById('score-display').textContent = gameState.score;
+    document.getElementById('level-display').textContent = `${gameState.currentLevel + 1}/${levels.length}`;
+    document.getElementById('timer-display').textContent = gameState.timeLeft;
+}
+
+// 开始计时
+function startTimer() {
+    if (gameState.timer) clearInterval(gameState.timer);
+    gameState.timer = setInterval(() => {
+        if (!gameState.isPlaying) return;
+        gameState.timeLeft--;
+        document.getElementById('timer-display').textContent = gameState.timeLeft;
+        if (gameState.timeLeft <= 0) {
+            gameOver(false);
+        }
+    }, 1000);
+}
+
+// 处理移动
+function handleMove(action) {
+    if (!gameState.isPlaying || gameState.isBuilderMode) return;
+
+    const p = gameState.player;
+    let newDir = p.dir;
+    let moveX = 0, moveY = 0;
+    let isValid = true;
+    let errorMsg = '';
+
+    switch(action) {
+        case 'straight':
+            moveX = DIRS[p.dir].dx;
+            moveY = DIRS[p.dir].dy;
+            break;
+        case 'left':
+            newDir = DIRS[p.dir].left;
+            break;
+        case 'right':
+            newDir = DIRS[p.dir].right;
+            break;
+        case 'turn_over':
+            newDir = DIRS[p.dir].opposite;
+            break;
+        case 'upstairs':
+        case 'downstairs':
+            if (gameState.map[p.y][p.x] !== '🪜') {
+                isValid = false;
+                errorMsg = '请先走到 🪜 楼梯格上，再选择上楼或下楼。';
+            } else {
+                // The map is a 2D classroom simulation: validate the stair instruction in place.
+                gameState.score += CONFIG.pointsPerMove;
+                gameState.steps++;
+                updateUI();
+                setStatus(action === 'upstairs' ? '✅ Great! Go upstairs!' : '✅ Great! Go downstairs!', 'success');
+                return;
+            }
+            break;
+    }
+
+    // 如果是转弯
+    if (action === 'left' || action === 'right' || action === 'turn_over') {
+        gameState.player.dir = newDir;
+        gameState.score += CONFIG.pointsPerMove;
+        updateUI();
+        renderMap();
+        setStatus(`✅ 好的！现在面向 ${getDirName(newDir)}`, 'success');
+        checkWin();
+        return;
+    }
+
+    // 如果是移动
+    if (isValid) {
+        const targetX = p.x + moveX;
+        const targetY = p.y + moveY;
+
+        // 检查边界
+        if (targetX < 0 || targetX >= CONFIG.gridSize || targetY < 0 || targetY >= CONFIG.gridSize) {
+            isValid = false;
+            errorMsg = '前面是边界，不能走哦！';
+        } else {
+            const targetTile = gameState.map[targetY][targetX];
+            if (targetTile === '🧱' || targetTile === '🌳' || targetTile === '🏫' || targetTile === '🏞️') {
+                isValid = false;
+                errorMsg = '前面有障碍物，换条路试试吧！';
+            }
+        }
+
+        if (isValid) {
+            gameState.player.x = targetX;
+            gameState.player.y = targetY;
+            gameState.steps++;
+            gameState.score += CONFIG.pointsPerMove;
+            updateUI();
+            renderMap();
+            setStatus(`✅ 走了一步！`, 'success');
+            checkWin();
+        } else {
+            // 错误移动
+            gameState.score = Math.max(0, gameState.score - 1);
+            updateUI();
+            setStatus(`❌ ${errorMsg} Try again!`, 'error');
+            shakeMap();
+        }
+    } else {
+        gameState.score = Math.max(0, gameState.score - 1);
+        updateUI();
+        setStatus(`❌ ${errorMsg}`, 'error');
+        shakeMap();
+    }
+}
+
+// 获取方向名称
+function getDirName(dir) {
+    switch(dir) {
+        case 'N': return '北（上）North';
+        case 'E': return '东（右）East';
+        case 'S': return '南（下）South';
+        case 'W': return '西（左）West';
+    }
+}
+
+// 检查是否获胜
+function checkWin() {
+    if (gameState.player.x === gameState.goal.x && gameState.player.y === gameState.goal.y) {
+        gameState.isPlaying = false;
+        if (gameState.timer) clearInterval(gameState.timer);
+
+        const timeSpent = Math.floor((Date.now() - gameState.levelStartTime) / 1000);
+        const levelBonus = Math.max(0, CONFIG.pointsPerLevel - gameState.steps * 2);
+        gameState.score += levelBonus;
+
+        document.getElementById('level-complete-msg').textContent = `🎉 Great job! 你找到了终点！`;
+        document.getElementById('level-score').textContent = `+${levelBonus}`;
+        document.getElementById('level-time').textContent = timeSpent;
+        document.getElementById('level-steps').textContent = gameState.steps;
+        document.getElementById('level-complete-screen').classList.remove('hidden');
+        updateUI();
+    }
+}
+
+// 进入下一关
+function nextLevel() {
+    document.getElementById('level-complete-screen').classList.add('hidden');
+    if (gameState.currentLevel + 1 >= levels.length) {
+        gameOver(true);
+    } else {
+        loadLevel(gameState.currentLevel + 1);
+        gameState.isPlaying = true;
+        startTimer();
+    }
+}
+
+// 游戏结束
+function gameOver(win) {
+    gameState.isPlaying = false;
+    if (gameState.timer) clearInterval(gameState.timer);
+
+    document.getElementById('final-score').textContent = gameState.score;
+    let stars = '⭐';
+    if (gameState.score > 300) stars = '⭐⭐⭐';
+    else if (gameState.score > 150) stars = '⭐⭐';
+    document.getElementById('star-rating').textContent = stars;
+
+    let msg = win ? '太棒了！你完成了所有关卡！' : '时间到！继续加油，空间感会越来越好的！';
+    document.getElementById('game-over-msg').textContent = msg;
+    document.getElementById('game-over-screen').classList.remove('hidden');
+}
+
+// 状态提示
+function setStatus(msg, type) {
+    const bar = document.getElementById('status-bar');
+    const text = document.getElementById('status-text');
+    bar.className = type || '';
+    text.innerHTML = msg;
+}
+
+// 地图抖动动画
+function shakeMap() {
+    const map = document.getElementById('map-grid');
+    map.style.animation = 'shake 0.3s';
+    setTimeout(() => { map.style.animation = ''; }, 300);
+}
+
+// 规则页面
+function showRules() {
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('rules-screen').classList.remove('hidden');
+}
+function hideRules() {
+    document.getElementById('rules-screen').classList.add('hidden');
+    document.getElementById('start-screen').classList.remove('hidden');
+}
+
+/* ============================================================================================
+   ==================================== 地图建造器模式 ====================================
+   ============================================================================================ */
+
+function enterBuilderMode() {
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('game-over-screen').classList.add('hidden');
+    document.getElementById('builder-panel').classList.add('active');
+    gameState.isBuilderMode = true;
+    gameState.isPlaying = false;
+    if (gameState.timer) clearInterval(gameState.timer);
+
+    // 初始化空地图
+    gameState.map = Array(CONFIG.gridSize).fill().map(() => Array(CONFIG.gridSize).fill('🟩'));
+    gameState.builderStart = null;
+    gameState.builderGoal = null;
+    gameState.pendingPointPlacement = null;
+
+    // 渲染空地图
+    renderMap();
+    setStatus('🎨 点击上方工具，再点击地图格子进行放置。先设置起点和终点！', '');
+}
+
+// 工具选择
+document.querySelectorAll('.tool-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('selected'));
+        this.classList.add('selected');
+        gameState.builderTool = this.dataset.tool;
+    });
+});
+
+// 点击格子
+function handleCellClick(x, y) {
+    if (!gameState.isBuilderMode) return;
+
+    if (gameState.pendingPointPlacement) {
+        const type = gameState.pendingPointPlacement;
+        if (type === 'start') {
+            if (gameState.builderGoal && gameState.builderGoal.x === x && gameState.builderGoal.y === y) {
+                setStatus('⚠️ 起点和终点不能相同，请重新选择。', 'error');
+                return;
+            }
+            if (gameState.builderStart) gameState.map[gameState.builderStart.y][gameState.builderStart.x] = '🟩';
+            gameState.builderStart = { x, y, dir: 'E' };
+            gameState.map[y][x] = '🚪';
+            setStatus('📍 起点已设置！现在设置终点。', 'success');
+        } else {
+            if (gameState.builderStart && gameState.builderStart.x === x && gameState.builderStart.y === y) {
+                setStatus('⚠️ 起点和终点不能相同，请重新选择。', 'error');
+                return;
+            }
+            if (gameState.builderGoal) gameState.map[gameState.builderGoal.y][gameState.builderGoal.x] = '🟩';
+            gameState.builderGoal = { x, y };
+            gameState.map[y][x] = '🎯';
+            setStatus('🎯 终点已设置！点击“开始寻宝”进行挑战。', 'success');
+        }
+        gameState.pendingPointPlacement = null;
+        renderMap();
+        return;
+    }
+    if ((gameState.builderStart && gameState.builderStart.x === x && gameState.builderStart.y === y) ||
+        (gameState.builderGoal && gameState.builderGoal.x === x && gameState.builderGoal.y === y)) {
+        setStatus('⚠️ 请先重新设置起点或终点，再编辑这个格子。', 'error');
+        return;
+    }
+
+    const tool = gameState.builderTool;
+    let tile = '🟩';
+    switch(tool) {
+        case 'wall': tile = '🧱'; break;
+        case 'path': tile = '🟩'; break;
+        case 'tree': tile = '🌳'; break;
+        case 'school': tile = '🏫'; break;
+        case 'park': tile = '🏞️'; break;
+        case 'stairs': tile = '🪜'; break;
+    }
+    gameState.map[y][x] = tile;
+    renderMap();
+}
+
+function setStartPoint() {
+    if (!gameState.isBuilderMode) return;
+    gameState.pendingPointPlacement = 'start';
+    setStatus('📍 请点击地图上要作为起点的格子（建议放在边缘）。', '');
+}
+
+function setGoalPoint() {
+    if (!gameState.isBuilderMode) return;
+    gameState.pendingPointPlacement = 'goal';
+    setStatus('🎯 请点击地图上要作为终点的格子。', '');
+}
+
+function startCustomGame() {
+    if (!gameState.builderStart || !gameState.builderGoal) {
+        setStatus('⚠️ 请先设置起点和终点！', 'error');
+        return;
+    }
+    // 将自定义地图作为最后一个关卡加入
+    levels.push({
+        map: JSON.parse(JSON.stringify(gameState.map)),
+        start: gameState.builderStart,
+        goal: gameState.builderGoal,
+        hint: "This is your custom map! Find your way to the goal!",
+        hintZh: "这是你设计的地图！找到通往终点的路吧！"
+    });
+
+    document.getElementById('builder-panel').classList.remove('active');
+    gameState.isBuilderMode = false;
+    gameState.currentLevel = levels.length - 1;
+    gameState.isPlaying = true;
+    gameState.timeLeft = CONFIG.timeLimit;
+    gameState.score = 0;
+    gameState.steps = 0;
+    gameState.levelStartTime = Date.now();
+
+    loadLevel(gameState.currentLevel);
+    startTimer();
+    setStatus('🚀 自定义关卡开始！根据提示找到终点吧！', '');
+}
+
+// 添加抖动动画
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+`;
+document.head.appendChild(style);
+
+// 初始化
+initGame();
+</script>
+</body>
+</html>
